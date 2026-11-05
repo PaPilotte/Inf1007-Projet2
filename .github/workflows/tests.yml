@@ -1,1 +1,15 @@
 #Lance le pytest à chaque push
+name: Tests
+
+on: [push]            # se déclenche à chaque push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest        # la machine virtuelle prêtée par GitHub
+    steps:
+      - uses: actions/checkout@v4          # télécharge ton code sur la machine
+      - uses: actions/setup-python@v5      # installe Python
+        with:
+          python-version: "3.12"           # voir remarque ci-dessous
+      - run: pip install -r requirements.txt   # installe tes dépendances
+      - run: python -m pytest -v               # lance les tests
