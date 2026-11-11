@@ -5,3 +5,6 @@ __pycache__/
 .coverage
 htmlcov/
 .env
+# Données originales non anonymisées
+/donnees/*.csv
+/donnees/*.csv.gz
