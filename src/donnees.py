@@ -209,19 +209,3 @@ if __name__ == "__main__":
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-# def donnees_test():
-#     return 1+1
-
-
