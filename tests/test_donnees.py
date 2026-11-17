@@ -1,8 +1,10 @@
-
 import pandas as pd
 import pytest
 
 from src.donnees import (
+    Variable,
+    VariableNumerique,
+    VariableCategorielle,
     charger_donnees,
     nettoyer_donnees,
     verifier_temps,
@@ -10,6 +12,12 @@ from src.donnees import (
     sauvegarder_donnees
 )
 
+from src.exceptions import DonneeInvalideError
+
+
+# --------------------------------------------------
+# Données fictives pour les tests
+# --------------------------------------------------
 
 @pytest.fixture
 def donnees_exemple():
@@ -26,9 +34,14 @@ def donnees_exemple():
     })
 
 
+# --------------------------------------------------
+# Tests du chargement et du nettoyage des données
+# --------------------------------------------------
+
 def test_charger_donnees(tmp_path):
     """Vérifie le chargement d'un CSV valide."""
     chemin = tmp_path / "test.csv"
+
     pd.DataFrame({"Age": [25, 30]}).to_csv(
         chemin, index=False
     )
@@ -130,7 +143,92 @@ def test_sauvegarder_donnees(tmp_path, donnees_exemple):
     assert chemin.exists()
 
     resultat = pd.read_csv(chemin)
+
     pd.testing.assert_frame_equal(
         resultat, donnees_exemple
     )
 
+
+# --------------------------------------------------
+# Tests des classes de variables (POO)
+# --------------------------------------------------
+
+def test_variable_abstraite():
+    """Vérifie qu'on ne peut pas instancier la classe abstraite."""
+    with pytest.raises(TypeError):
+        Variable("Age")
+
+
+def test_variable_numerique_valide():
+    """Vérifie l'acceptation des nombres dans l'intervalle."""
+    variable = VariableNumerique("Age", 18, 80)
+
+    assert variable.valider(25) == 25.0
+    assert variable.valider("35") == 35.0
+
+
+def test_variable_numerique_hors_intervalle():
+    """Vérifie le refus d'une valeur hors intervalle."""
+    variable = VariableNumerique("Age", 18, 80)
+
+    with pytest.raises(DonneeInvalideError):
+        variable.valider(120)
+
+
+def test_variable_numerique_non_numerique():
+    """Vérifie le refus d'un texte non numérique."""
+    variable = VariableNumerique("Age", 18, 80)
+
+    with pytest.raises(DonneeInvalideError):
+        variable.valider("bonjour")
+
+
+def test_variable_numerique_non_finie():
+    """Vérifie le refus des valeurs NaN et infinies."""
+    variable = VariableNumerique("Age", 18, 80)
+
+    with pytest.raises(DonneeInvalideError):
+        variable.valider(float("nan"))
+
+    with pytest.raises(DonneeInvalideError):
+        variable.valider(float("inf"))
+
+
+def test_variable_categorielle_valide():
+    """Vérifie l'acceptation des catégories M et F."""
+    variable = VariableCategorielle("M/F", ["M", "F"])
+
+    assert variable.valider("M") == "M"
+    assert variable.valider("F") == "F"
+
+
+def test_variable_categorielle_invalide():
+    """Vérifie le refus d'une catégorie inconnue."""
+    variable = VariableCategorielle("M/F", ["M", "F"])
+
+    with pytest.raises(DonneeInvalideError):
+        variable.valider("X")
+
+
+def test_variable_polymorphisme():
+    """Vérifie la validation polymorphe de deux variables."""
+    variables = [
+        VariableNumerique("Age", 18, 80),
+        VariableCategorielle("M/F", ["M", "F"])
+    ]
+
+    valeurs = [25, "M"]
+
+    resultats = [
+        variable.valider(valeur)
+        for variable, valeur in zip(variables, valeurs)
+    ]
+
+    assert resultats == [25.0, "M"]
+
+
+def test_variable_repr():
+    """Vérifie la représentation des objets."""
+    variable = VariableNumerique("Age", 18, 80)
+
+    assert repr(variable) == "VariableNumerique('Age')"

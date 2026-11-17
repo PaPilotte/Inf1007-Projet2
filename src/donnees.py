@@ -1,9 +1,17 @@
 
 import os
+import math
+from abc import ABC, abstractmethod
+
 import pandas as pd
 
+from src.exceptions import DonneeInvalideError
 
+
+# --------------------------------------------------
 # Chemins et constantes du projet
+# --------------------------------------------------
+
 DOSSIER_PROJET = os.path.dirname(
     os.path.dirname(os.path.abspath(__file__))
 )
@@ -25,6 +33,91 @@ COLONNES_A_GARDER = [
 ]
 
 
+# --------------------------------------------------
+# Classes des variables (POO)
+# --------------------------------------------------
+
+class Variable(ABC):
+    """Classe parente abstraite des variables du modèle."""
+
+    def __init__(self, nom: str):
+        self._nom = nom
+
+    @property
+    def nom(self) -> str:
+        """Retourne le nom de la variable."""
+        return self._nom
+
+    @abstractmethod
+    def valider(self, valeur):
+        """Valide une valeur et retourne la valeur convertie."""
+
+    def __repr__(self) -> str:
+        """Retourne une représentation de la variable."""
+        return f"{type(self).__name__}({self._nom!r})"
+
+
+class VariableNumerique(Variable):
+    """Variable numérique avec un intervalle autorisé."""
+
+    def __init__(self, nom: str, minimum: float, maximum: float):
+        super().__init__(nom)
+
+        if minimum > maximum:
+            raise ValueError("Intervalle invalide.")
+
+        self._minimum = minimum
+        self._maximum = maximum
+
+    def valider(self, valeur) -> float:
+        """Convertit la valeur en nombre et vérifie son intervalle."""
+        try:
+            nombre = float(valeur)
+        except (TypeError, ValueError) as erreur:
+            raise DonneeInvalideError(
+                f"{self._nom} doit être un nombre."
+            ) from erreur
+
+        if not math.isfinite(nombre):
+            raise DonneeInvalideError(
+                f"{self._nom} doit être un nombre fini."
+            )
+
+        if not self._minimum <= nombre <= self._maximum:
+            raise DonneeInvalideError(
+                f"{self._nom} doit être entre "
+                f"{self._minimum} et {self._maximum}."
+            )
+
+        return nombre
+
+
+class VariableCategorielle(Variable):
+    """Variable dont la valeur appartient à des catégories."""
+
+    def __init__(self, nom: str, categories: list[str]):
+        super().__init__(nom)
+
+        if not categories:
+            raise ValueError("La liste des catégories est vide.")
+
+        self._categories = list(categories)
+
+    def valider(self, valeur) -> str:
+        """Vérifie que la valeur appartient aux catégories autorisées."""
+        if valeur not in self._categories:
+            raise DonneeInvalideError(
+                f"{self._nom} doit être parmi : "
+                f"{', '.join(self._categories)}."
+            )
+
+        return valeur
+
+
+# --------------------------------------------------
+# Chargement des données
+# --------------------------------------------------
+
 def charger_donnees(chemin: str) -> pd.DataFrame:
     """
     Charge un fichier CSV.
@@ -45,6 +138,10 @@ def charger_donnees(chemin: str) -> pd.DataFrame:
 
     return pd.read_csv(chemin)
 
+
+# --------------------------------------------------
+# Nettoyage des données
+# --------------------------------------------------
 
 def nettoyer_donnees(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -78,6 +175,10 @@ def nettoyer_donnees(df: pd.DataFrame) -> pd.DataFrame:
     return df_nettoye
 
 
+# --------------------------------------------------
+# Vérification des temps
+# --------------------------------------------------
+
 def verifier_temps(df: pd.DataFrame) -> pd.DataFrame:
     """
     Repère les observations aux temps incohérents.
@@ -98,6 +199,10 @@ def verifier_temps(df: pd.DataFrame) -> pd.DataFrame:
 
     return invalides
 
+
+# --------------------------------------------------
+# Échantillonnage des données
+# --------------------------------------------------
 
 def echantillonner_donnees(
     df: pd.DataFrame,
@@ -129,6 +234,10 @@ def echantillonner_donnees(
     ).reset_index(drop=True)
 
 
+# --------------------------------------------------
+# Sauvegarde des données
+# --------------------------------------------------
+
 def sauvegarder_donnees(
     df: pd.DataFrame,
     chemin: str
@@ -142,6 +251,10 @@ def sauvegarder_donnees(
     """
     df.to_csv(chemin, index=False)
 
+
+# --------------------------------------------------
+# Vérification du jeu de données nettoyé
+# --------------------------------------------------
 
 def main() -> None:
     """Charge et vérifie le fichier Boston nettoyé."""
@@ -206,6 +319,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
-
