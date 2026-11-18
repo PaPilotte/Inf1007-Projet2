@@ -22,7 +22,7 @@ NOMS_DISTANCES = {
 
 
 def convertir_temps(secondes: float) -> str:
-    """Convertit un nombre de secondes en HH:MM:SS."""
+    """Convertit un temps en secondes au format HH:MM:SS."""
     secondes = round(secondes)
 
     heures = secondes // 3600
@@ -106,8 +106,25 @@ class Application:
         """Charge le modèle, les métadonnées et construit la fenêtre."""
         self._fenetre = tk.Tk()
         self._fenetre.title("Marathon Predictor")
-        self._fenetre.geometry("650x620")
-        self._fenetre.resizable(False, False)
+
+        # Fenêtre maximisée sur Windows
+        try:
+            self._fenetre.state("zoomed")
+        except tk.TclError:
+            self._fenetre.geometry("1100x750")
+
+        self._fenetre.resizable(True, True)
+
+        # Adaptation des dimensions à la résolution de l'écran
+        largeur = self._fenetre.winfo_screenwidth()
+        hauteur = self._fenetre.winfo_screenheight()
+
+        self._echelle = min(
+            largeur / 1400,
+            hauteur / 850
+        )
+
+        self._echelle = max(0.80, min(self._echelle, 1.35))
 
         self._modele = None
         self._variables = {}
@@ -115,6 +132,10 @@ class Application:
 
         self._charger_modele()
         self._construire_interface()
+
+    def _taille(self, valeur: int) -> int:
+        """Adapte une dimension à la résolution de l'écran."""
+        return round(valeur * self._echelle)
 
     def _charger_modele(self) -> None:
         """Charge le modèle et prépare les objets de validation."""
@@ -126,8 +147,8 @@ class Application:
         self._intervalles = metadonnees["intervalles"]
         self._categories = metadonnees["categories"]["M/F"]
 
-        # L'âge conserve ses limites issues des données.
         minimum_age, maximum_age = self._intervalles["Age"]
+
         self._variables["Age"] = VariableNumerique(
             "Age", minimum_age, maximum_age
         )
@@ -136,42 +157,65 @@ class Application:
             "M/F", self._categories
         )
 
-        # Les chronos sont validés individuellement,
-        # puis leur ordre est vérifié avec valider_chronos().
-        # On conserve une limite technique de 9 h 59 min 59 s
-        # correspondant aux champs de l'interface.
         for distance in DISTANCES:
             self._variables[distance] = VariableNumerique(
                 distance, 0, 35999
             )
 
     def _construire_interface(self) -> None:
-        """Crée les champs, les boutons et les résultats."""
+        """Construit une interface agrandie et centrée."""
+
+        # Polices adaptées à la résolution
+        police_titre = ("Arial", self._taille(30), "bold")
+        police_sous_titre = ("Arial", self._taille(14))
+        police_champs = ("Arial", self._taille(16))
+        police_entetes = ("Arial", self._taille(13), "bold")
+        police_bouton = ("Arial", self._taille(17), "bold")
+        police_resultat = ("Arial", self._taille(23), "bold")
+        police_allure = ("Arial", self._taille(16))
+
+        # Cadre principal centré verticalement et horizontalement
+        contenu = ttk.Frame(self._fenetre)
+
+        contenu.place(
+            relx=0.5,
+            rely=0.5,
+            anchor="center"
+        )
 
         # Titre
         ttk.Label(
-            self._fenetre,
+            contenu,
             text="Marathon Predictor",
-            font=("Arial", 20, "bold")
-        ).pack(pady=(25, 10))
+            font=police_titre
+        ).pack(pady=(0, self._taille(12)))
 
         # Sous-titre
         ttk.Label(
-            self._fenetre,
+            contenu,
             text=(
                 "Prédisez votre temps au marathon "
-                "grâce à l'intelligence artificielle."
-            )
-        ).pack(pady=(0, 15))
+                "en remplissant les champs ci-dessous."
+            ),
+            font=police_sous_titre
+        ).pack(pady=(0, self._taille(30)))
 
-        formulaire = ttk.Frame(self._fenetre, padding=15)
+        # Formulaire
+        formulaire = ttk.Frame(contenu)
         formulaire.pack()
 
         # Âge
         ttk.Label(
             formulaire,
-            text="Âge :"
-        ).grid(row=0, column=0, padx=10, pady=10, sticky="e")
+            text="Âge :",
+            font=police_champs
+        ).grid(
+            row=0,
+            column=0,
+            padx=self._taille(15),
+            pady=self._taille(12),
+            sticky="e"
+        )
 
         minimum_age, maximum_age = self._intervalles["Age"]
 
@@ -184,7 +228,8 @@ class Application:
             formulaire,
             values=ages,
             state="readonly",
-            width=17
+            width=16,
+            font=police_champs
         )
 
         if ages:
@@ -193,26 +238,48 @@ class Application:
             )
 
         self._champ_age.grid(
-            row=0, column=1, columnspan=3,
-            padx=10, pady=10, sticky="w"
+            row=0,
+            column=1,
+            columnspan=3,
+            padx=self._taille(10),
+            pady=self._taille(12),
+            sticky="w"
         )
 
         # Sexe
         ttk.Label(
             formulaire,
-            text="Sexe :"
-        ).grid(row=1, column=0, padx=10, pady=10, sticky="e")
+            text="Sexe :",
+            font=police_champs
+        ).grid(
+            row=1,
+            column=0,
+            padx=self._taille(15),
+            pady=self._taille(12),
+            sticky="e"
+        )
 
         self._champ_sexe = ttk.Combobox(
             formulaire,
             values=self._categories,
             state="readonly",
-            width=17
+            width=16,
+            font=police_champs
         )
 
         self._champ_sexe.grid(
-            row=1, column=1, columnspan=3,
-            padx=10, pady=10, sticky="w"
+            row=1,
+            column=1,
+            columnspan=3,
+            padx=self._taille(10),
+            pady=self._taille(12),
+            sticky="w"
+        )
+
+        # Police des menus déroulants
+        self._fenetre.option_add(
+            "*TCombobox*Listbox.font",
+            police_champs
         )
 
         # En-têtes des chronos
@@ -221,20 +288,30 @@ class Application:
         ):
             ttk.Label(
                 formulaire,
-                text=titre
+                text=titre,
+                font=police_entetes
             ).grid(
-                row=2, column=colonne,
-                padx=5, pady=(15, 5)
+                row=2,
+                column=colonne,
+                padx=self._taille(10),
+                pady=(self._taille(22), self._taille(8))
             )
 
         # Champs des chronos
         for ligne, distance in enumerate(DISTANCES, start=3):
+
+            nom = NOMS_DISTANCES[distance]
+
             ttk.Label(
                 formulaire,
-                text=f"{NOMS_DISTANCES[distance].capitalize()} :"
+                text=f"{nom.capitalize()} :",
+                font=police_champs
             ).grid(
-                row=ligne, column=0,
-                padx=10, pady=10, sticky="e"
+                row=ligne,
+                column=0,
+                padx=self._taille(15),
+                pady=self._taille(13),
+                sticky="e"
             )
 
             champs = {}
@@ -251,8 +328,9 @@ class Application:
                     formulaire,
                     from_=0,
                     to=maximum,
-                    width=6,
-                    format="%02.0f"
+                    width=5,
+                    format="%02.0f",
+                    font=police_champs
                 )
 
                 champ.set("00")
@@ -260,8 +338,8 @@ class Application:
                 champ.grid(
                     row=ligne,
                     column=colonne,
-                    padx=5,
-                    pady=10
+                    padx=self._taille(9),
+                    pady=self._taille(13)
                 )
 
                 champs[cle] = champ
@@ -270,39 +348,45 @@ class Application:
 
         # Bouton de prédiction
         self._bouton_predire = tk.Button(
-            self._fenetre,
+            contenu,
             text="Prédire mon marathon",
             command=self.predire_marathon,
-            font=("Arial", 12, "bold"),
+            font=police_bouton,
             bg="#2563EB",
             fg="white",
             activebackground="#1D4ED8",
             activeforeground="white",
-            padx=20,
-            pady=10,
+            padx=self._taille(28),
+            pady=self._taille(15),
             cursor="hand2",
             relief="flat"
         )
 
-        self._bouton_predire.pack(pady=(20, 15))
+        self._bouton_predire.pack(
+            pady=(self._taille(35), self._taille(20))
+        )
 
-        # Affichage du temps prédit
+        # Temps prédit
         self._resultat = ttk.Label(
-            self._fenetre,
+            contenu,
             text="",
-            font=("Arial", 16, "bold")
+            font=police_resultat
         )
 
-        self._resultat.pack(pady=(5, 5))
+        self._resultat.pack(
+            pady=(self._taille(8), self._taille(8))
+        )
 
-        # Affichage de l'allure
+        # Allure moyenne
         self._allure_resultat = ttk.Label(
-            self._fenetre,
+            contenu,
             text="",
-            font=("Arial", 12)
+            font=police_allure
         )
 
-        self._allure_resultat.pack(pady=(0, 10))
+        self._allure_resultat.pack(
+            pady=(0, self._taille(10))
+        )
 
     def _lire_caracteristiques(self) -> dict:
         """Lit et valide les caractéristiques du coureur."""
@@ -318,13 +402,12 @@ class Application:
 
         caracteristiques = {}
 
-        # Polymorphisme : chaque variable utilise son propre valider().
+        # Polymorphisme
         for nom, variable in self._variables.items():
             caracteristiques[nom] = variable.valider(
                 saisies[nom]
             )
 
-        # Vérification de l'ordre des passages.
         valider_chronos(caracteristiques)
 
         return caracteristiques
@@ -338,7 +421,10 @@ class Application:
                 caracteristiques
             )
 
-            if not math.isfinite(prediction) or prediction <= caracteristiques["HALF"]:
+            if (
+                not math.isfinite(prediction)
+                or prediction <= caracteristiques["HALF"]
+            ):
                 raise DonneeInvalideError(
                     "La prédiction est incohérente avec "
                     "le temps au demi-marathon."
@@ -371,8 +457,13 @@ def main() -> None:
     try:
         application = Application()
 
-    except (FileNotFoundError, OSError, ValueError, KeyError,
-            json.JSONDecodeError) as erreur:
+    except (
+        FileNotFoundError,
+        OSError,
+        ValueError,
+        KeyError,
+        json.JSONDecodeError
+    ) as erreur:
         messagebox.showerror(
             "Erreur de chargement",
             "Impossible de charger le modèle ou ses métadonnées.\n\n"
