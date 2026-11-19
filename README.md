@@ -110,7 +110,7 @@ Il suffit ensuite de saisir les informations du coureur et de cliquer sur le bou
 |---|---|
 | `main.py` | Lancement de l'application |
 | `donnees.py` | Chargement, nettoyage et validation des données |
-| `modele.py` | Entraînement, évaluation et prédiction |
+| `modele.py` | Évaluation et prédiction |
 | `entrainement.py` | Exécution du processus d'entraînement |
 | `interface.py` | Interface graphique Tkinter |
 | `chronos.py` | Conversion et validation des temps |

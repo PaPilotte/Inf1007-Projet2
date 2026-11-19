@@ -1,0 +1,47 @@
+{
+  "colonnes": [
+    "Age",
+    "M/F",
+    "5K",
+    "10K",
+    "15K",
+    "HALF"
+  ],
+  "cible": "Finish Net",
+  "categories": {
+    "M/F": [
+      "M",
+      "F"
+    ]
+  },
+  "intervalles": {
+    "Age": [
+      18.0,
+      82.0
+    ],
+    "5K": [
+      857.0,
+      8523.0
+    ],
+    "10K": [
+      1708.0,
+      10476.0
+    ],
+    "15K": [
+      2563.0,
+      12540.0
+    ],
+    "HALF": [
+      3619.0,
+      15382.0
+    ]
+  },
+  "metriques": {
+    "mae_modele": 438.4870248722571,
+    "r2_modele": 0.9451428811793806,
+    "mae_reference_moyenne": 2186.4483985891293,
+    "mae_reference_naive": 831.0619387755102,
+    "taille_entrainement": 39200,
+    "taille_test": 9800
+  }
+}
