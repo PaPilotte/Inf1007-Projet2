@@ -20,6 +20,7 @@ from src.exceptions import DonneeInvalideError
 from src.fenetre_historique import afficher_historique
 from src.historique import HistoriquePredictions
 from src.modele import Modele, CHEMIN_MODELE, CHEMIN_METADONNEES
+from src.graphiques import afficher_graphique_progression
 
 
 class Application:
@@ -44,6 +45,9 @@ class Application:
         self._variables = {}
         self._champs_temps = {}
         self._historique = HistoriquePredictions()
+
+        self._derniere_prediction = None
+        self._dernieres_caracteristiques = None
 
         self._charger_modele()
         self._construire_interface()
@@ -249,6 +253,12 @@ class Application:
 
         ttk.Button(
             contenu,
+            text="Voir le graphique de progression",
+            command=self.voir_graphique
+        ).pack(pady=(self._taille(8), 0))
+
+        ttk.Button(
+            contenu,
             text="Voir l'historique",
             command=self.voir_historique
         ).pack(pady=(self._taille(8), 0))
@@ -277,6 +287,10 @@ class Application:
 
     def predire_marathon(self) -> None:
         """Calcule, affiche et enregistre une prédiction."""
+
+        self._derniere_prediction = None
+        self._dernieres_caracteristiques = None
+
         try:
             caracteristiques = self._lire_caracteristiques()
             prediction = self._modele.predire(caracteristiques)
@@ -289,6 +303,9 @@ class Application:
                     "La prédiction est incohérente avec "
                     "le temps au demi-marathon."
                 )
+
+            self._derniere_prediction = prediction
+            self._dernieres_caracteristiques = dict(caracteristiques)
 
             self._resultat.config(
                 text=f"Temps prédit : {convertir_temps(prediction)}"
@@ -311,6 +328,31 @@ class Application:
                 "Historique",
                 "La prédiction a été calculée, mais elle n'a "
                 f"pas pu être enregistrée.\n\nDétails : {erreur}"
+            )
+
+    def voir_graphique(self) -> None:
+        """Affiche le graphique de la dernière prédiction valide."""
+        if (
+            self._derniere_prediction is None
+            or self._dernieres_caracteristiques is None
+        ):
+            messagebox.showinfo(
+                "Graphique de progression",
+                "Effectuez d'abord une prédiction valide."
+            )
+            return
+
+        try:
+            afficher_graphique_progression(
+                self._fenetre,
+                self._dernieres_caracteristiques,
+                self._derniere_prediction
+            )
+        except (ImportError, KeyError, tk.TclError, TypeError, ValueError) as erreur:
+            messagebox.showerror(
+                "Graphique indisponible",
+                "Impossible d'afficher le graphique.\n\n"
+                f"Détails : {erreur}"
             )
 
     def voir_historique(self) -> None:
