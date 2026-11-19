@@ -1,4 +1,6 @@
 
+"""Gestion, nettoyage et validation des données de Marathon Predictor."""
+
 import os
 import math
 from abc import ABC, abstractmethod
@@ -38,9 +40,14 @@ COLONNES_A_GARDER = [
 # --------------------------------------------------
 
 class Variable(ABC):
-    """Classe parente abstraite des variables du modèle."""
+    """Classe parente abstraite représentant une variable du modèle."""
 
-    def __init__(self, nom: str):
+    def __init__(self, nom: str) -> None:
+        """Initialise la variable.
+
+        Args:
+            nom: Nom de la variable.
+        """
         self._nom = nom
 
     @property
@@ -49,18 +56,40 @@ class Variable(ABC):
         return self._nom
 
     @abstractmethod
-    def valider(self, valeur):
-        """Valide une valeur et retourne la valeur convertie."""
+    def valider(self, valeur: object) -> float | str:
+        """Valide une valeur et retourne sa représentation convertie.
+
+        Args:
+            valeur: Valeur à valider.
+
+        Returns:
+            Valeur numérique ou catégorielle validée.
+
+        Raises:
+            DonneeInvalideError: Si la valeur est invalide.
+        """
 
     def __repr__(self) -> str:
-        """Retourne une représentation de la variable."""
+        """Retourne une représentation textuelle de la variable."""
         return f"{type(self).__name__}({self._nom!r})"
 
 
 class VariableNumerique(Variable):
     """Variable numérique avec un intervalle autorisé."""
 
-    def __init__(self, nom: str, minimum: float, maximum: float):
+    def __init__(
+        self, nom: str, minimum: float, maximum: float
+    ) -> None:
+        """Initialise une variable numérique.
+
+        Args:
+            nom: Nom de la variable.
+            minimum: Valeur minimale autorisée.
+            maximum: Valeur maximale autorisée.
+
+        Raises:
+            ValueError: Si le minimum dépasse le maximum.
+        """
         super().__init__(nom)
 
         if minimum > maximum:
@@ -69,8 +98,19 @@ class VariableNumerique(Variable):
         self._minimum = minimum
         self._maximum = maximum
 
-    def valider(self, valeur) -> float:
-        """Convertit la valeur en nombre et vérifie son intervalle."""
+    def valider(self, valeur: object) -> float:
+        """Convertit la valeur en nombre et vérifie son intervalle.
+
+        Args:
+            valeur: Valeur à convertir et à valider.
+
+        Returns:
+            Valeur numérique convertie en float.
+
+        Raises:
+            DonneeInvalideError: Si la valeur n'est pas numérique,
+                n'est pas finie ou est hors de l'intervalle.
+        """
         try:
             nombre = float(valeur)
         except (TypeError, ValueError) as erreur:
@@ -93,9 +133,18 @@ class VariableNumerique(Variable):
 
 
 class VariableCategorielle(Variable):
-    """Variable dont la valeur appartient à des catégories."""
+    """Variable dont la valeur appartient à des catégories autorisées."""
 
-    def __init__(self, nom: str, categories: list[str]):
+    def __init__(self, nom: str, categories: list[str]) -> None:
+        """Initialise une variable catégorielle.
+
+        Args:
+            nom: Nom de la variable.
+            categories: Liste des catégories autorisées.
+
+        Raises:
+            ValueError: Si la liste des catégories est vide.
+        """
         super().__init__(nom)
 
         if not categories:
@@ -103,8 +152,18 @@ class VariableCategorielle(Variable):
 
         self._categories = list(categories)
 
-    def valider(self, valeur) -> str:
-        """Vérifie que la valeur appartient aux catégories autorisées."""
+    def valider(self, valeur: object) -> str:
+        """Vérifie que la valeur appartient aux catégories autorisées.
+
+        Args:
+            valeur: Catégorie à vérifier.
+
+        Returns:
+            Catégorie validée.
+
+        Raises:
+            DonneeInvalideError: Si la catégorie est invalide.
+        """
         if valeur not in self._categories:
             raise DonneeInvalideError(
                 f"{self._nom} doit être parmi : "
@@ -119,8 +178,7 @@ class VariableCategorielle(Variable):
 # --------------------------------------------------
 
 def charger_donnees(chemin: str) -> pd.DataFrame:
-    """
-    Charge un fichier CSV.
+    """Charge un fichier CSV.
 
     Args:
         chemin: Chemin vers le fichier CSV.
@@ -144,17 +202,17 @@ def charger_donnees(chemin: str) -> pd.DataFrame:
 # --------------------------------------------------
 
 def nettoyer_donnees(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Sélectionne les colonnes utiles et conserve M/F.
+    """Sélectionne les colonnes utiles et conserve les catégories M et F.
 
     Args:
         df: Données originales.
 
     Returns:
-        DataFrame contenant les colonnes sélectionnées.
+        DataFrame contenant uniquement les colonnes sélectionnées
+        et les observations des catégories M et F.
 
     Raises:
-        ValueError: Si une colonne est manquante.
+        ValueError: Si une colonne requise est manquante.
     """
     colonnes_manquantes = [
         colonne for colonne in COLONNES_A_GARDER
@@ -180,14 +238,14 @@ def nettoyer_donnees(df: pd.DataFrame) -> pd.DataFrame:
 # --------------------------------------------------
 
 def verifier_temps(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Repère les observations aux temps incohérents.
+    """Repère les observations aux temps incohérents.
 
     Args:
-        df: Données à vérifier.
+        df: Données contenant les temps de passage des coureurs.
 
     Returns:
-        DataFrame des observations incohérentes.
+        DataFrame contenant les observations dont les temps sont
+        non positifs ou non strictement croissants.
     """
     invalides = df[
         (df["5K"] <= 0) |
@@ -209,8 +267,7 @@ def echantillonner_donnees(
     nombre: int = 49000,
     graine: int = 42
 ) -> pd.DataFrame:
-    """
-    Sélectionne un échantillon aléatoire reproductible.
+    """Sélectionne un échantillon aléatoire reproductible.
 
     Args:
         df: Données à échantillonner.
@@ -218,7 +275,7 @@ def echantillonner_donnees(
         graine: Graine aléatoire.
 
     Returns:
-        DataFrame échantillonné.
+        DataFrame échantillonné avec un index réinitialisé.
 
     Raises:
         ValueError: Si le nombre demandé est invalide.
@@ -242,12 +299,14 @@ def sauvegarder_donnees(
     df: pd.DataFrame,
     chemin: str
 ) -> None:
-    """
-    Sauvegarde un DataFrame au format CSV.
+    """Sauvegarde un DataFrame au format CSV.
 
     Args:
         df: Données à sauvegarder.
         chemin: Destination du fichier CSV.
+
+    Returns:
+        None. Le résultat est écrit dans un fichier CSV.
     """
     df.to_csv(chemin, index=False)
 
@@ -257,7 +316,18 @@ def sauvegarder_donnees(
 # --------------------------------------------------
 
 def main() -> None:
-    """Charge et vérifie le fichier Boston nettoyé."""
+    """Charge et vérifie le fichier Boston nettoyé.
+
+    Vérifie les colonnes, les valeurs manquantes, les temps,
+    les catégories et le nombre d'observations.
+
+    Returns:
+        None. Les résultats sont affichés dans le terminal.
+
+    Raises:
+        FileNotFoundError: Si le fichier nettoyé est absent.
+        ValueError: Si les données ne respectent pas les critères.
+    """
 
     # 1. Charger les données nettoyées
     df = charger_donnees(CHEMIN_NETTOYE)

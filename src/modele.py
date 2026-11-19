@@ -44,7 +44,8 @@ def chronometrer(fonction: Callable) -> Callable:
         Une nouvelle fonction qui fait le même travail et affiche sa durée.
     """
     @wraps(fonction)  # conserve le nom et la docstring d'origine
-    def enveloppe(*args, **kwargs):
+    def enveloppe(*args: object, **kwargs: object) -> object:
+        """Exécute la fonction décorée et affiche sa durée."""
         debut = time.perf_counter()
         resultat = fonction(*args, **kwargs)
         duree = time.perf_counter() - debut
@@ -55,8 +56,18 @@ def chronometrer(fonction: Callable) -> Callable:
 
 # ---------- Chapitre 12 : métriques vectorisées avec NumPy ----------
 
-def _valider_tableaux(y_reel, y_predit) -> tuple[np.ndarray, np.ndarray]:
+def _valider_tableaux(
+    y_reel: list | np.ndarray | pd.Series,
+    y_predit: list | np.ndarray | pd.Series
+) -> tuple[np.ndarray, np.ndarray]:
     """Convertit en tableaux NumPy et vérifie qu'ils sont compatibles.
+
+    Args:
+        y_reel: valeurs réelles.
+        y_predit: valeurs prédites.
+
+    Returns:
+        Les deux tableaux NumPy de même forme.
 
     Raises:
         DonneeInvalideError: si les tailles diffèrent ou si les tableaux sont vides.
@@ -70,7 +81,10 @@ def _valider_tableaux(y_reel, y_predit) -> tuple[np.ndarray, np.ndarray]:
     return y_reel, y_predit
 
 
-def calculer_mae(y_reel, y_predit) -> float:
+def calculer_mae(
+    y_reel: list | np.ndarray | pd.Series,
+    y_predit: list | np.ndarray | pd.Series
+) -> float:
     """Erreur absolue moyenne (même unité que la cible : secondes).
 
     Args:
@@ -87,8 +101,18 @@ def calculer_mae(y_reel, y_predit) -> float:
     return float(np.mean(np.abs(y_reel - y_predit)))
 
 
-def calculer_r2(y_reel, y_predit) -> float:
+def calculer_r2(
+    y_reel: list | np.ndarray | pd.Series,
+    y_predit: list | np.ndarray | pd.Series
+) -> float:
     """Coefficient de détermination R² (1 = parfait, 0 = pas mieux que la moyenne).
+
+    Args:
+        y_reel: valeurs réelles.
+        y_predit: valeurs prédites.
+
+    Returns:
+        Le coefficient R² sous forme de float.
 
     Raises:
         DonneeInvalideError: tableaux invalides ou cible constante (R² indéfini).
@@ -217,6 +241,9 @@ class Modele:
     def donnees_test(self) -> tuple[np.ndarray, np.ndarray]:
         """Renvoie (valeurs réelles, prédictions) du jeu de test.
 
+        Returns:
+            Un tuple contenant les tableaux des valeurs réelles et prédites.
+
         Raises:
             ModeleNonEntraineError: si entrainer() n'a pas été appelé.
         """
@@ -231,6 +258,9 @@ class Modele:
             chemin_modele: destination du fichier .joblib.
             chemin_meta: destination du fichier .json.
             df: données ayant servi à calculer les intervalles des variables.
+
+        Returns:
+            None; les fichiers sont enregistrés sur disque.
 
         Raises:
             ModeleNonEntraineError: si le modèle n'est pas entraîné.
@@ -262,6 +292,12 @@ class Modele:
     def charger(cls, chemin_modele: str) -> "Modele":
         """Recharge un modèle sauvegardé, sans ré-entraînement.
 
+        Args:
+            chemin_modele: chemin vers le fichier joblib.
+
+        Returns:
+            Une instance de Modele chargée et prête à prédire.
+
         Raises:
             FileNotFoundError: si le fichier n'existe pas.
         """
@@ -283,5 +319,6 @@ class Modele:
         return self._est_entraine
 
     def __repr__(self) -> str:
+        """Retourne une représentation de l'état du modèle."""
         etat = "entraîné" if self._est_entraine else "non entraîné"
         return f"Modele(regression_lineaire, {etat})"
