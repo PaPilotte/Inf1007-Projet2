@@ -232,3 +232,157 @@ def test_variable_repr():
     variable = VariableNumerique("Age", 18, 80)
 
     assert repr(variable) == "VariableNumerique('Age')"
+
+
+# --------------------------------------------------
+# Tests supplémentaires des variables (POO)
+# --------------------------------------------------
+
+def test_variable_propriete_nom():
+    """Vérifie que la propriété nom retourne le bon nom."""
+    variable = VariableNumerique("Age", 18, 80)
+
+    assert variable.nom == "Age"
+
+
+def test_variable_numerique_intervalle_invalide():
+    """Le minimum ne peut pas dépasser le maximum."""
+    with pytest.raises(ValueError, match="Intervalle invalide"):
+        VariableNumerique("Age", 80, 18)
+
+
+def test_variable_categorielle_liste_vide():
+    """Une variable catégorielle doit avoir des catégories."""
+    with pytest.raises(ValueError, match="catégories est vide"):
+        VariableCategorielle("M/F", [])
+
+
+# --------------------------------------------------
+# Tests de vérification du CSV nettoyé
+# --------------------------------------------------
+
+@pytest.fixture
+def donnees_nettoyees_valides():
+    """Crée un fichier fictif respectant toutes les vérifications."""
+    return pd.DataFrame({
+        "Age": [30] * 49000,
+        "M/F": ["M"] * 49000,
+        "5K": [1500] * 49000,
+        "10K": [3000] * 49000,
+        "15K": [4500] * 49000,
+        "HALF": [6300] * 49000,
+        "Finish Net": [13000] * 49000
+    })
+
+
+def test_verification_complete_valide(
+    monkeypatch, donnees_nettoyees_valides, capsys
+):
+    """Un jeu de données valide passe toutes les vérifications."""
+    import src.donnees as module_donnees
+
+    monkeypatch.setattr(
+        module_donnees,
+        "charger_donnees",
+        lambda chemin: donnees_nettoyees_valides
+    )
+
+    module_donnees.main()
+
+    sortie = capsys.readouterr().out
+
+    assert "VÉRIFICATION TERMINÉE" in sortie
+    assert "Fichier vérifié avec succès" in sortie
+
+
+def test_verification_colonnes_incorrectes(
+    monkeypatch, donnees_nettoyees_valides
+):
+    """Le fichier est refusé si les colonnes sont incorrectes."""
+    import src.donnees as module_donnees
+
+    donnees = donnees_nettoyees_valides.drop(columns=["Age"])
+
+    monkeypatch.setattr(
+        module_donnees,
+        "charger_donnees",
+        lambda chemin: donnees
+    )
+
+    with pytest.raises(ValueError, match="colonnes"):
+        module_donnees.main()
+
+
+def test_verification_valeurs_manquantes(
+    monkeypatch, donnees_nettoyees_valides
+):
+    """Une valeur manquante doit être détectée."""
+    import src.donnees as module_donnees
+
+    donnees = donnees_nettoyees_valides.copy()
+    donnees.loc[0, "Age"] = None
+
+    monkeypatch.setattr(
+        module_donnees,
+        "charger_donnees",
+        lambda chemin: donnees
+    )
+
+    with pytest.raises(ValueError, match="valeurs manquantes"):
+        module_donnees.main()
+
+
+def test_verification_temps_incoherents(
+    monkeypatch, donnees_nettoyees_valides
+):
+    """Le fichier est refusé si un temps de passage est incohérent."""
+    import src.donnees as module_donnees
+
+    donnees = donnees_nettoyees_valides.copy()
+    donnees.loc[0, "10K"] = 1000
+
+    monkeypatch.setattr(
+        module_donnees,
+        "charger_donnees",
+        lambda chemin: donnees
+    )
+
+    with pytest.raises(ValueError, match="temps incohérents"):
+        module_donnees.main()
+
+
+def test_verification_categorie_invalide(
+    monkeypatch, donnees_nettoyees_valides
+):
+    """Le fichier est refusé si le genre n'est ni M ni F."""
+    import src.donnees as module_donnees
+
+    donnees = donnees_nettoyees_valides.copy()
+    donnees.loc[0, "M/F"] = "X"
+
+    monkeypatch.setattr(
+        module_donnees,
+        "charger_donnees",
+        lambda chemin: donnees
+    )
+
+    with pytest.raises(ValueError, match="catégorie M/F invalide"):
+        module_donnees.main()
+
+
+def test_verification_nombre_observations(
+    monkeypatch, donnees_nettoyees_valides
+):
+    """Le fichier doit contenir exactement 49 000 observations."""
+    import src.donnees as module_donnees
+
+    donnees = donnees_nettoyees_valides.iloc[:100].copy()
+
+    monkeypatch.setattr(
+        module_donnees,
+        "charger_donnees",
+        lambda chemin: donnees
+    )
+
+    with pytest.raises(ValueError, match="49 000 observations"):
+        module_donnees.main()
